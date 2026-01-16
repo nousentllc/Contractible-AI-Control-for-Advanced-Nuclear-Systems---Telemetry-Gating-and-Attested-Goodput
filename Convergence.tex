@@ -1644,18 +1644,53 @@ Before scaling beyond pilot, the facility must demonstrate:
 % (Optional) Keep your existing shorter "what pays/what penalizes" summary if you like; it's consistent with this block.
 
 \newpage
-\section{Conclusion: The Three Laws of the Nuclear-AI Era}
+\section{Conclusion: Three Contractible Invariants for SMR--AI Co-Control}
+\label{sec:conclusion_invariants}
 
-Synthesizing the "Efficiency Paradox" with the "NEXUS-DC" and DeepONet research, we derive three governing laws for this new domain:
+This manuscript’s central claim is not that SMR--AI co-control is easy, but that it can be made \emph{contractible}:
+decisions become replayable predicates over signed telemetry, safety semantics become bounded-rate trajectories, and model
+imperfection becomes a priced state variable. Synthesizing the Efficiency Paradox with the NEXUS-DC posture and the
+DeepONet/guardian architecture, we isolate three governing \emph{invariants} that any deployment-grade interface must
+respect.
 
-\begin{enumerate}
-    \item \textbf{The Law of Thermal-Digital Equivalence:} Real-time thermal margin (in the reactor) is computationally equivalent to available bandwidth (in the cluster). DeepONet is the translation layer that converts thermal margin into token throughput.
-    \item \textbf{The Law of Stiffness Conservation:} Load Stiffness cannot be destroyed, only shifted. A Stiff AI load ($k_{stiff} \to \infty$) connected to a slow-ramping SMR requires a Buffer (TES/Battery) proportional to the mismatch in their time constants.
-    \item \textbf{The Law of Survival Value:} The economic value of an SMR to an AI facility is defined not by its LCOE, but by its ability to set the Survival Function $S(t) \approx 1$, eliminating the "Stranded Asset" risk of grid interconnection queues.
+\begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=*]
+
+  \item \textbf{Thermal--Digital Equivalence (via an observability contract).}
+  In stiff-workload operation, \emph{thermal margin is the binding currency}. What the AI facility experiences as
+  “available compute headroom” is the plant’s admissible transient envelope under POI and BOP constraints. The practical
+  bridge is not a narrative analogy but an \emph{interface}: a telemetry and time-quality contract sufficient to make
+  the admissibility gate auditable, and an oracle/guardian stack (e.g., DeepONet + hybrid anomaly detection) that maps
+  measured plant state to a conservative sprint cap $\sigma_{\max}(t)$ with explicit uncertainty accounting. The
+  consequence is operational: token throughput is permitted only insofar as it is \emph{provably compatible} with the
+  audited thermal-hydraulic envelope and the \texttt{YELLOW} degradation semantics.
+
+  \item \textbf{Stiffness Conservation (buffering is a requirement, not an optimization).}
+  Load stiffness cannot be removed by pricing; it can only be \emph{shifted in time}. A stiff AI load
+  ($\kstiff \rightarrow \infty$ in the paper’s notation) coupled to a slow-ramping SMR induces a control mismatch that
+  must be absorbed by a buffer layer (TES/battery/checkpointing) sized to the time-constant gap and the allowable ramp
+  envelope. The contractible implication is that “shed load” is not a primitive: only \emph{bounded-rate} soft-landings
+  are admissible. Hence the \texttt{YELLOW} state must be defined as a ramp-controlled trajectory over $\sigma(t)$ and
+  $\PAI(t)$, and it must be replayable from logs (not asserted post hoc).
+
+  \item \textbf{Survival Value (queue risk is a priced reliability externality).}
+  For hyperscale AI campuses, the economic objective is not marginal $/MWh$ minimization; it is \emph{survival of the
+  compute asset under delay and discontinuity risk}. The correct valuation object is therefore the survival function
+  $S(t)$ (or equivalently the hazard of interruption and restart), and the correct settlement object is not raw energy
+  but \emph{attested goodput} reconciled against energy and performance counters. This drives the financial hardening:
+  oracle/guardian imperfections must be internalized as priced hazard (MCA premiums) with explicit liquidation rules
+  for covered failures, so that the system is economically self-limiting before it is physically unsafe.
+
 \end{enumerate}
 
-By intersecting the user's rigorous economic framing with Dr. Bhowmik’s advanced computational physics, we arrive at a unified conclusion: The Rubin architecture is not just a compute platform; it is a thermal-hydraulic load that requires a control-theoretic integration with its power source. The tools to achieve this—DeepONet, HNN, and Compute-ASCDE—are already present in the respective bodies of work; the task now is to couple them.
-
+\paragraph{Unified takeaway.}
+The Rubin-class campus should be treated as a fast actuation system whose dominant coupling to the SMR is
+thermal-hydraulic and control-theoretic, not merely electrical. The core components required to make that coupling
+auditable are already present in the manuscript’s stack---(i) a telemetry/attestation backbone, (ii) a zero-trust
+admissibility gate with explicit \texttt{YELLOW} semantics, (iii) a physics-informed oracle/guardian with manifold and
+stability constraints, and (iv) a reliability-complete economic layer (Compute-ASCDE + collateral) that prices model
+imperfection and discontinuity. The remaining work is not to invent new primitives, but to \emph{couple} them into a
+closed-loop demonstration with calibration artifacts: coverage curves for uncertainty, false-positive budgets for
+anomaly gates, and replayable trace bundles sufficient for third-party audit.
 \newpage
 
 \section*{Method Note (Human-AI Assisted Research Protocol)}
