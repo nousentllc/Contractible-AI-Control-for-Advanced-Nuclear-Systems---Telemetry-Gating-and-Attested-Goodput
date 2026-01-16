@@ -318,13 +318,6 @@
 % -----------------------
 % NOMENCLATURE (standalone page)
 % -----------------------
-% Prereqs (preamble):
-% \usepackage{booktabs}
-% \usepackage{longtable}
-% \usepackage{array}
-% \usepackage{amsmath,amssymb}
-% (Optional) nicer ragged columns:
-% \newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 
 \clearpage
 \thispagestyle{empty}
@@ -437,13 +430,69 @@ CIP & Critical Infrastructure Protection (NERC standards family). \\
 % =========================================================
 
 \setcounter{page}{1}
-
 % Re-assert fancy header content (robust across titlepage + empty pages)
 \pagestyle{fancy}
 
 \clearpage
 \pagenumbering{arabic}
 
+% ============================================================
+% ONE-PAGER #2 (LaTeX) — Contractible AI Control for Advanced Nuclear Systems
+% Insert suggestion: place immediately after \begin{abstract}...\end{abstract}
+% ============================================================
+
+\section*{Executive Summary and How to Use This Paper}
+\addcontentsline{toc}{section}{Executive Summary and How to Use This Paper}
+
+\subsection*{Executive Summary (One Page)}
+\addcontentsline{toc}{subsection}{Executive Summary (One Page)}
+
+This paper proposes a control-and-contract framework that makes AI operation \emph{provable, auditable, and enforceable} in high-consequence energy environments (advanced nuclear and grid-adjacent critical systems). The core claim is that trustworthy operation must be treated as an \emph{engineering property}: measurable, testable, and contractible rather than aspirational.
+
+We formalize three primitives:
+\begin{enumerate}
+  \item \textbf{Telemetry Contract:} the system exposes the right signals (state, inputs, outputs, and performance) with audit-grade integrity and time synchronization.
+  \item \textbf{Admissibility / Gating:} actions are permitted only if they satisfy explicit constraints (physics envelopes, operational limits, and policy).
+  \item \textbf{Attested Goodput:} the system proves it delivered \emph{economically valid work} under constraints, with traceability via verifiable logs and replayable artifacts.
+\end{enumerate}
+
+A key contribution is making uncertainty operational: when epistemic or operational uncertainty rises, the controller \emph{derates authority} (caps sprint, narrows admissible actions, or increases verification) rather than expanding autonomy into unmodeled regimes. This yields: (i) fail-safe behavior, (ii) regulatory defensibility through attestation bundles, and (iii) market compatibility (verifiable demand response / VPP participation).
+
+\textbf{Connection to the companion paper (\emph{Compute-ASCDE-SMR}):} This control stack is what converts ``flexible load,'' ``deliverability,'' ``curtailment,'' and ``reliable tokens'' into \emph{measured variables}. Those measured variables are the inputs required for planner valuation and interconnection conditions in Compute-ASCDE.
+
+\subsection*{How to Use This Paper (Engineering / Commissioning Workflow)}
+\addcontentsline{toc}{subsection}{How to Use This Paper (Engineering / Commissioning Workflow)}
+
+\textbf{Inputs required}
+\begin{enumerate}
+  \item \textbf{Operational domain specification:} what is controlled, what is advisory-only, and the required response times.
+  \item \textbf{Telemetry schema:} sensors, sampling rates, time sync requirements, retention, integrity (e.g., signed logs, hash-chains).
+  \item \textbf{Constraint set:} admissible operating envelope (physics limits, ramp limits, power-quality limits, safety interlocks).
+  \item \textbf{Performance targets:} response reliability, false-positive/false-negative tolerances, acceptable derating behavior, and audit requirements.
+\end{enumerate}
+
+\textbf{Procedure}
+\begin{enumerate}
+  \item \textbf{Define the telemetry contract:} enumerate required signals, integrity requirements, and the audit artifacts needed for verification and replay.
+  \item \textbf{Implement gating:} encode hard constraints as deny-by-default checks; require explicit proofs/attestations for mode escalation.
+  \item \textbf{Define attested goodput:} specify what counts as valid work and how it is verified; penalize unverified output by construction.
+  \item \textbf{Commission with adversarial tests:} inject sensor faults, distribution shift, network loss, time-sync drift, and verify fail-safe behavior.
+  \item \textbf{Publish the compliance bundle:} the artifact set a utility/regulator/insurer can audit (logs, metrics, proofs, replay harness).
+\end{enumerate}
+
+\textbf{Outputs}
+\begin{itemize}
+  \item a contractible operational profile (curtailment response curve, restart profile, ramp governor characteristics, and power-quality behavior),
+  \item an attestation bundle suitable for (i) grid programs (demand response/reserves) and (ii) the valuation interface in \emph{Compute-ASCDE-SMR}.
+\end{itemize}
+
+\textbf{Decision rule}
+\begin{itemize}
+  \item grant autonomy only when telemetry completeness, gating coverage, and goodput attestation meet the agreed thresholds;
+  \item otherwise cap authority and require either fixed-policy control or human-in-the-loop escalation.
+\end{itemize}
+
+\newpage
 
 \section{Structural Analysis of the Rubin-Class Load Profile and the SMR Constraint}
 
