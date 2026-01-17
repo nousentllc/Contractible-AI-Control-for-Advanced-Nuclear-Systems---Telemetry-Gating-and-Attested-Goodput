@@ -64,6 +64,8 @@ If you want the clean “standard” setup for research repos, here are the two 
 - **Code:** MIT (or Apache-2.0)
 - **Paper/figures:** CC BY 4.0 (or CC BY-NC 4.0 if you want noncommercial restriction)
 ---
+
+
 @techreport{candler2026contractible,
   title       = {Contractible AI Control for Advanced Nuclear Systems: Telemetry, Gating, and Attested Goodput},
   author      = {Candler, Justin},
@@ -72,5 +74,5 @@ If you want the clean “standard” setup for research repos, here are the two 
   type        = {Technical Report},
   number      = {AI-Doc-002},
   note        = {GitHub Repository},
-  url         = {https://github.com/YOUR_USERNAME/YOUR_REPO}
+  url         = {https://github.com/nousentllc}
 }
