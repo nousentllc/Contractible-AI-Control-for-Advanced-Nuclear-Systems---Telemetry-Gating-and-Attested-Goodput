@@ -444,8 +444,7 @@ CIP & Critical Infrastructure Protection (NERC standards family). \\
 \section*{Executive Summary and How to Use This Paper}
 \addcontentsline{toc}{section}{Executive Summary and How to Use This Paper}
 
-\subsection*{Executive Summary (One Page)}
-\addcontentsline{toc}{subsection}{Executive Summary (One Page)}
+\subsection*{Executive Summary}
 
 This paper proposes a control-and-contract framework that makes AI operation \emph{provable, auditable, and enforceable} in high-consequence energy environments (advanced nuclear and grid-adjacent critical systems). The core claim is that trustworthy operation must be treated as an \emph{engineering property}: measurable, testable, and contractible rather than aspirational.
 
@@ -1690,7 +1689,60 @@ Before scaling beyond pilot, the facility must demonstrate:
   \item Without Phase~3, you cannot pay for conservative behavior or buffering; any ``goodput'' promise becomes uneconomic.
 \end{itemize}
 
-% (Optional) Keep your existing shorter "what pays/what penalizes" summary if you like; it's consistent with this block.
+
+% ---------------------------------------------------------------------
+% Section 4.6 — Formal Safety Properties (LTL / Model Checking)
+% ---------------------------------------------------------------------
+\subsection{Formal Safety Properties of the Control Kernel (LTL Specifications)}
+\label{sec:formal_properties}
+
+The preceding sections define a hybrid controller: cryptographic admissibility, physics feasibility predicates,
+and a tri-state degradation logic (\texttt{GREEN}/\texttt{YELLOW}/\texttt{RED}). For institutional adoption, the
+controller must be defensible not only by narrative intent but by \emph{machine-checkable properties}:
+(i) \emph{safety} (forbidden actions never occur), (ii) \emph{liveness} (the controller cannot deadlock or oscillate
+indefinitely in degraded states), and (iii) \emph{refinement} (the implemented code conforms to the specification).
+
+\paragraph{Model.}
+Let $\mathcal{K}$ be the discrete control kernel (the state machine implementing Sequences A/B/C and the
+\texttt{YELLOW} ramp profile). Let atomic propositions include:
+\[
+\texttt{Scarcity},\ \texttt{Sprint},\ \texttt{Grant},\ \texttt{Deny},\ \texttt{Yellow},\ \texttt{Red},\ 
+\texttt{OracleFeasible},\ \texttt{RPS\_margin},\ \texttt{AuditLag}.
+\]
+All propositions are computed from signed telemetry and logged constraint evaluations (Appendix~F), so the trace is
+replayable.
+
+\paragraph{Safety invariants.}
+The following LTL formulas encode non-negotiable hard-decks:
+\begin{align}
+\mathbf{G}\bigl(\texttt{Scarcity} \rightarrow \neg \texttt{Sprint}\bigr), \label{eq:ltl_scarcity}\\
+\mathbf{G}\bigl(\texttt{AuditLag} \rightarrow \neg \texttt{Grant}\bigr), \label{eq:ltl_auditlag}\\
+\mathbf{G}\bigl(\texttt{Grant} \rightarrow (\texttt{OracleFeasible} \wedge \texttt{RPS\_margin})\bigr).
+\label{eq:ltl_grant_feasible}
+\end{align}
+Here $\mathbf{G}$ is the LTL ``globally'' operator (always). These encode: scarcity disables sprinting; audit lag disables
+new authority; and any grant implies both physics feasibility and non-ML hard deck clearance.
+
+\paragraph{Liveness properties (no infinite degraded loops).}
+A robust degradation policy must terminate: \texttt{YELLOW} cannot be a permanent limbo. We require:
+\begin{equation}
+\mathbf{G}\bigl(\texttt{Yellow} \rightarrow \mathbf{F}(\texttt{Green} \lor \texttt{Red})\bigr),
+\label{eq:ltl_liveness}
+\end{equation}
+where $\mathbf{F}$ is ``eventually.'' This ensures \texttt{YELLOW} resolves: either recovery (\texttt{GREEN}) or safe-mode
+(\texttt{RED}).
+
+\paragraph{Refinement and implementation conformance.}
+To close the gap between specification and code, we recommend an explicit model-checking step:
+encode $\mathcal{K}$ as a finite-state model (e.g., PROMELA/SPIN or an equivalent toolchain), then verify that
+\cref{eq:ltl_scarcity,eq:ltl_auditlag,eq:ltl_grant_feasible,eq:ltl_liveness} hold under bounded nondeterminism in
+telemetry arrivals, audit publication delay, and anomaly triggers.\footnote{This is not a claim of ``certified safety;''
+it is a claim that the controller cannot violate its own declared invariants, and cannot deadlock in its own declared
+state machine. Deployment validation remains contingent on plant studies and cybersecurity testing.}
+
+\paragraph{Audit artifact.}
+The signed causal trace record $\mathcal{T}(t)$ (Appendix~M / Appendix~F) can include the truth values of the LTL atomic
+propositions at each decision time, enabling third-party replay and retrospective verification of invariant compliance.
 
 \newpage
 \section{Conclusion: Three Contractible Invariants for SMR--AI Co-Control}
@@ -1905,7 +1957,7 @@ We partition threats into families, each with (i) a primary objective, and (ii) 
         inconsistency \citep{NIST800207,IEC62443}.
 \end{enumerate}
 
-\subsection{Scenario template: standard fields (must be filled for each test)}
+\subsection{Scenario template: standard fields}
 \label{app:scenario_template}
 
 Each scenario must specify:
@@ -1946,7 +1998,7 @@ Every denial or clamp action must emit exactly one primary reason code (plus opt
 \]
 This constraint is intentionally bureaucratic: it enforces audit-clarity and prevents post hoc storytelling.
 
-\subsection{Minimum viable scenario catalog (first-pass)}
+\subsection{Minimum viable scenario catalog}
 \label{app:scenario_catalog}
 
 \begin{longtable}{@{}p{0.13\linewidth}p{0.14\linewidth}p{0.28\linewidth}p{0.37\linewidth}@{}}
@@ -2115,7 +2167,7 @@ conditions (power level, temperature ranges) that shift modes.
 Finalize $\Omega_k$ bands with a versioned registry. Any change to $\mathcal{R}_{\text{mode}}$ is treated as a
 policy change requiring dual authorization and a short re-validation run.
 
-\subsection{Calibration and change control for \texorpdfstring{$\Omega_0$ and $\tau_{\text{spec}}$}{Omega_0 and tau_spec}}
+\subsection{\texorpdfstring{Calibration and change control for $\Omega_0$ and $\tau_{\text{spec}}$}{Calibration and change control for Omega_0 and tau_spec}}
 \label{app:spectral_calibration}
 
 
@@ -2651,7 +2703,7 @@ the system fails during rare bursts.}
 \paragraph{Acceptance A5 (tail latency).}
 Require $\Pr[\tau_{\text{E2E}} > \tau_{\max}] \le \delta_\tau$ over the pilot duration.
 
-\subsubsection{S1.2 Envelope identification: empirical $R_{\text{safe}}$ and sensitive bands}
+\subsubsection{\texorpdfstring{S1.2 Envelope identification: empirical $R_{\text{safe}}$ and sensitive bands}{S1.2 Envelope identification: empirical R_safe and sensitive bands}}
 \label{app:s1_envelope_id}
 
 Empirically identify:
@@ -2730,7 +2782,7 @@ No settlement row may exist without corresponding evidence pointers. Any orphane
 until resolved.
 
 \subsection{Scenario catalog (test cases and adversarial injections)}
-\label{app:scenario_catalog}
+\label{app:scenario_catalog_adversarial)}
 
 We define a minimal scenario catalog. Each scenario must produce:
 (i) a time-aligned multi-stream dataset, (ii) expected gate outcomes, (iii) expected evidence bundles.
@@ -3036,7 +3088,7 @@ $z_{\mathrm{lim}}$ by $z_{\mathrm{lim}}-\varepsilon$ in the headroom definitions
 \footnote{Operationally: identify $L$ empirically from pilot traces (or conservatively upper-bound it by plant
 bandwidth). This gives you a deterministic way to translate sampling rate into safety margin.}
 
-\subsection{From headroom bounds to sprint cap \texorpdfstring{$\sigma_{\max}(t)$}{sigma_max(t)}}
+\subsection{\pdfmath{From headroom bounds to sprint cap $\sigma_{\max}(t)$}{From headroom bounds to sprint cap sigma_max(t)}}
 \label{appF:sigma_max}
 
 Sequence A requires a decision variable: the maximum admissible sprint factor $\sigma(t)\in[1,\sigma_{\mathrm{peak}}]$.
@@ -3396,7 +3448,7 @@ That is the operational meaning of an ``observability contract.''}
 The admission and anomaly gates depend on three estimators. If these estimators are not well-defined under the
 telemetry pipeline, the gates are not enforceable.
 
-\subsubsection{$dP/dt$ estimation at the POI}
+\subsubsection{\texorpdfstring{$dP/dt$ estimation at the POI}{dP/dt estimation at the POI}}
 \label{appF:dpdt_estimation}
 
 Let $P(t)$ be the POI real power trace. In implementation, the gate uses a discrete-time estimator at sampling rate
@@ -3437,7 +3489,7 @@ peak. \qedhere
 ``1-second telemetry'' can be insufficient if the facility’s relevant $\tau_r$ is in the 5--50 ms range at
 aggregation.}
 
-\subsubsection{Spectral energy estimation in sensitive bands $\Omega_0$}
+\subsubsection{\texorpdfstring{Spectral energy estimation in sensitive bands $\Omega_0$}{Spectral energy estimation in sensitive bands Omega_0}}
 \label{appF:spectral_energy_est}
 
 Your resonance defenses assume you can estimate energy in $\Omega_0$ from recorded telemetry. Define a
@@ -4024,7 +4076,7 @@ We define the minimum evidence objects produced by the architecture:
   forensic captures, recovery approvals.
 \end{itemize}
 
-\subsection{Crosswalk table (controls $\rightarrow$ evidence $\rightarrow$ regimes)}
+\subsection{Crosswalk table (controls to vidence to regimes)}
 \label{appH:crosswalk_table}
 
 \begin{longtable}{@{}p{0.25\linewidth}p{0.26\linewidth}p{0.42\linewidth}@{}}
@@ -4216,8 +4268,8 @@ Let $P_{\text{AI}}(t)$ be the POI aggregate load and let $u_f(t),u_s(t)$ be the 
 Let the test harness emit workload commands (scheduler plane), while the observability contract records realized
 power (electrical plane) and plant state (physics plane).
 
-\subsubsection{J1: Step-drop / step-up transients (fast $dP/dt$)}
-\label{appJ:step_tests}
+\subsubsection{\texorpdfstring{J1: Step-drop / step-up transients (fast $dP/dt$)}{J1: Step-drop / step-up transients (fast dP/dt)}}
+\label{appJ:dpdt_transients}\label{appJ:step_tests}
 
 Construct step transients:
 \begin{equation}
@@ -4410,8 +4462,8 @@ Define:
 \end{equation}
 so that any replayed or reordered bundle breaks the chain.
 
-\subsection{Goodput measurement definition (what counts as $G(t)$)}
-\label{appK:goodput_definition}
+\subsection{\texorpdfstring{Goodput measurement definition (what counts as $G(t)$)}{Goodput measurement definition (what counts as G(t))}}
+\label{appk:goodput_definition}
 
 To be audit-stable, $G(t)$ must be defined as \emph{accepted} work, not attempted work.
 
@@ -5458,5 +5510,949 @@ self-regulating: risk increases both the marginal price and the feasible control
 \paragraph{Contractible artifact.}
 Log $\rho(t)$, $\chi(t)$, and $\sigma_{\max}^{\mathrm{coupled}}(t)$ in the \texttt{ATTEST\_BUNDLE} for replay.
 
+\newpage
+\section{Deployment Hardening Addendum: Verifiable Work, Drift Observers, Robust Guardians, Low-Latency Audit, and Load-Rejection Interlocks}
+
+% ---------------------------------------------------------------------
+% Appendix M.1 — Probabilistic Proof of Useful Work (PoUW)
+% ---------------------------------------------------------------------
+\subsection{Probabilistic Proof of Useful Work (PoUW): Commit--Challenge Replay for Goodput Settlement}
+\label{appN:pouw}
+
+\paragraph{Threat model (liar's dividend).}
+If ``goodput'' is settled from self-reported optimizer progress alone, a compromised scheduler can dissipate energy
+while reporting fictitious learning progress. We therefore add a bounded-verification primitive that breaks
+self-reference: \emph{commit--challenge replay}.\footnote{\noindent\textbf{Institutional posture.} The architecture is layered by assurance tier: the core controller remains
+non-ML hard-deck safe, while optional compliance layers (zero-knowledge audit, entropic quality veto, and formal LTL
+verification) can be enabled as institutional requirements tighten.}
+
+\paragraph{Commitment (hash-chained training transcript).}
+For each training step (or batch) $i$, the scheduler commits to a transcript digest
+\begin{equation}
+H_i := \mathrm{Hash}\!\bigl(H_{i-1}\,\|\,w_i\,\|\,g_i\,\|\,\mathrm{meta}_i\bigr),
+\label{eq:pouw_commit}
+\end{equation}
+where $w_i$ are weights, $g_i$ is the gradient (or update primitive), and $\mathrm{meta}_i$ encodes deterministic
+replay metadata (data identifier, seed, precision mode, kernel determinism flag). The digest chain $\{H_i\}$ is appended
+to the audit ledger (or \texttt{ATTEST\_BUNDLE} accumulator).
+
+\paragraph{Random challenge (verifiable selection).}
+Every $N$ steps, the verifier samples an index $k$ from the last window via a verifiable random function (VRF),
+\begin{equation}
+k \sim \mathrm{VRF}(\mathrm{root},\ \mathrm{epoch}),
+\label{eq:pouw_vrf}
+\end{equation}
+and requests the pre-image for step $k$: $(w_k,\mathrm{meta}_k)$ plus the minimal disclosed material necessary for
+one-step deterministic replay.
+
+\paragraph{Deterministic replay with tolerance.}
+The verifier replays \emph{one step} on trusted reference hardware and checks a tolerance-bound agreement:
+\begin{equation}
+\|w'_{k+1}-w_{k+1}\| \le \varepsilon_w.
+\label{eq:pouw_tolerance}
+\end{equation}
+The tolerance $\varepsilon_w$ is fixed by the declared numeric mode (precision, deterministic kernels) and is logged.
+
+\paragraph{Settlement rule (slashing / invalidation).}
+If \cref{eq:pouw_tolerance} fails, the settlement outcome for the corresponding credit window is
+\begin{equation}
+\mathrm{PPA}_{\mathrm{credit}} = 0,
+\end{equation}
+and the mechanism triggers a contractual penalty (``slashing'') funded by the model collateral account.
+
+\paragraph{Detection bound (contractible).}
+Let $p_d$ be the per-challenge detection probability conditional on spoofing, and let $m$ be the number of independent
+challenges in a settlement window. Then
+\begin{equation}
+\Prob(\text{spoofing undetected}) \le (1-p_d)^m \le \epsilon,
+\label{eq:pouw_bound}
+\end{equation}
+which sets $m$ (and thus verifier overhead) for a chosen risk tolerance $\epsilon$.
+
+\paragraph{Log artifacts.}
+The auditor must be able to reconstruct: $\{H_i\}$, VRF outputs, $(k,\mathrm{meta}_k)$, replay tolerance $\varepsilon_w$,
+and replay outcome tags, without access to model weights beyond the challenged step.
+
+% ---------------------------------------------------------------------
+% Appendix M.2 — Adaptive Observer Derating (DeepONet Drift Hardening)
+% ---------------------------------------------------------------------
+\subsection{Adaptive Observer Derating: Online Drift Estimation for the Thermal Oracle}
+\label{appN:adaptive_observer}
+
+\paragraph{Motivation.}
+Offline-trained operator surrogates drift as the physical plant ages (fouling, valve wear, sensor bias). To preserve
+contractibility, drift must become a \emph{priced state variable} that monotonically reduces sprint authority.
+
+\paragraph{Residual and degradation parameter.}
+Let the oracle predict an outlet temperature $\That(t)$ and let the measured value be $T_{\mathrm{meas}}(t)$.
+Define the residual $e(t):=T_{\mathrm{meas}}(t)-\That(t)$, and introduce a degradation parameter vector $\theta(t)$
+capturing slow plant changes. The oracle is augmented to $\That(t)=\That(x(t),u(t);\hat{\theta}(t))$.
+
+\paragraph{Lyapunov-style adaptation law.}
+Define $V(t):=\tfrac12 e(t)^2 + \tfrac12 \tilde{\theta}(t)^\top \Gamma^{-1}\tilde{\theta}(t)$ where
+$\tilde{\theta}:=\hat{\theta}-\theta$. A standard gradient update is
+\begin{equation}
+\dot{\hat{\theta}}(t) = -\Gamma\,\frac{\partial \That}{\partial \theta}(t)\,e(t),
+\label{eq:theta_update}
+\end{equation}
+with gain matrix $\Gamma\succeq 0$ and bounded adaptation rate constraints logged as part of the control contract.
+
+\paragraph{Derating law (monotone safety semantics).}
+Let $\Delta T_{\mathrm{nom}}(t)$ be nominal headroom. Define conservative headroom
+\begin{equation}
+\Delta T_{\mathrm{safe}}(t) = \Delta T_{\mathrm{nom}}(t) - \alpha\,\|\hat{\theta}(t)\|,
+\label{eq:headroom_derate}
+\end{equation}
+and require sprint authority to be nonincreasing in $\|\hat{\theta}\|$, e.g.
+$\sigmax(t)=\sigmax(\Delta T_{\mathrm{safe}}(t))$ with $\partial \sigmax/\partial \|\hat{\theta}\|\le 0$.
+
+\paragraph{Operational guardrail (insufficient excitation).}
+If residual statistics do not satisfy an excitation / identifiability check over a horizon $W$, adaptation is frozen
+and the system defaults to conservative derating (raise the uncertainty penalty) until observability is restored.
+
+\paragraph{Log artifacts.}
+Store $e(t)$, $\hat{\theta}(t)$, adaptation bounds, and the resulting $(\Delta T_{\mathrm{safe}},\sigmax)$ trajectory
+in \texttt{ATTEST\_BUNDLE} for replay audit.
+
+
+% ---------------------------------------------------------------------
+% Appendix M.3 — Certifiably Robust Guardian (Lipschitz + Smoothing)
+% ---------------------------------------------------------------------
+\subsection{Certifiably Robust Guardian: Lipschitz-Bounded Anomaly Scoring with Randomized Smoothing}
+\label{appN:robust_guardian}
+
+\paragraph{Motivation.}
+A classifier-style guardian can be evaded by adversarial perturbations: inputs engineered to appear benign while
+exciting resonant physical modes. We therefore harden the guardian by bounding its sensitivity.
+
+\paragraph{Lipschitz-bounded score.}
+Let the guardian output a continuous anomaly score $s(x)$ on telemetry features $x$. We enforce a Lipschitz bound
+\begin{equation}
+\|\nabla_x s(x)\| \le K,
+\label{eq:lipschitz_bound}
+\end{equation}
+via spectral normalization (or other operator-norm constraints) during training. The policy threshold then acts on
+$s(x)$, not on opaque logits.
+
+\paragraph{Randomized smoothing.}
+Define the smoothed score $\bar{s}(x):=\E_{\epsilon}[s(x+\epsilon)]$ with
+$\epsilon\sim \mathcal{N}(0,\sigma_s^2 I)$. The smoothing scale is chosen relative to measured telemetry noise:
+$\sigma_s \ge \sigma_{\mathrm{sensor}}$.
+
+\paragraph{Certified robustness radius (conceptual).}
+Under standard smoothing results, classification of $x$ by $\bar{s}$ with sufficient margin yields a certified radius
+$R$ such that all perturbations $\delta$ with $\|\delta\|\le R$ preserve the decision. Operationally: the guardian can
+log $(\bar{s}(x),R)$ as an auditable robustness certificate.
+
+\paragraph{Integration with \texttt{YELLOW}.}
+A \texttt{YELLOW} trigger is raised if $\bar{s}(x)$ exceeds threshold \emph{or} if the certified radius $R$ falls below
+a minimum robustness floor $R_{\min}$ (insufficient confidence under perturbation).
+
+\paragraph{Log artifacts.}
+Store $(K,\sigma_s,\bar{s}(x),R)$ and threshold decisions per window in the replay bundle.
+
+% ---------------------------------------------------------------------
+% Appendix M.4 — Hot/Cold Path Attestation (LOW-LATENCY CONTROL, FULL AUDIT)
+% ---------------------------------------------------------------------
+\subsection{Hierarchical Optimistic Execution: Hot/Cold Path Split for Attestation Latency}
+\label{appN:hot_cold}
+
+\paragraph{Why this exists (control-time vs audit-time).}
+The contractible-control stack requires per-decision evidence: identity, policy hash, constraint evaluations,
+and replayable artifacts (the \texttt{ATTEST\_BUNDLE}). If every gating decision must be public-key signed and
+persisted synchronously, millisecond-class cryptographic latency can dominate the very control loop it is meant
+to document. This creates a failure mode where the system is \emph{auditable but non-controllable}.
+
+The hardening move is a time-scale separation:
+\begin{itemize}
+  \item \textbf{Hot path (control loop):} microsecond--sub-millisecond responsiveness for admission, ramping, and interlocks.
+  \item \textbf{Cold path (audit loop):} millisecond--second scale batching, signing, and durable publication of proofs.
+\end{itemize}
+The core requirement is that the cold path can \emph{cryptographically bind} every hot-path decision after-the-fact,
+without allowing the hot path to drift unaccountably.
+
+\paragraph{Threat model and invariants.}
+We assume an adversary can (i) delay audit publication, (ii) attempt replay of stale grants, or (iii) try to
+execute control actions without durable records. The split architecture enforces three invariants:
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Short-grant bounded authority:} any hot-path grant expires quickly (\texttt{TTL}) and cannot be renewed
+        without continuing cold-path progress.
+  \item \textbf{Cryptographic binding:} every hot-path grant is a leaf in a Merkle structure whose root is signed on the
+        cold path, making omission/rewriting detectable.
+  \item \textbf{Fail-safe renewal semantics:} if cold-path publication lags beyond budget, the system reverts to
+        conservative operation (\texttt{deny} new sprints / baseload / \texttt{YELLOW}) automatically.
+\end{enumerate}
+
+\paragraph{Hot-path grant token (fast authentication).}
+At each decision time $t$, compute a \emph{short grant} $\tau_t$ authenticated by symmetric cryptography (HMAC),
+which is orders-of-magnitude faster than public-key signing:
+\begin{equation}
+\tau_t :=
+\mathrm{HMAC}_{k_{\mathrm{hot}}}\!\Bigl(
+\underbrace{\mathrm{sess\_id}}_{\text{boot epoch}}
+\,\|\,\underbrace{\mathrm{decision\_id}}_{\text{monotone}}
+\,\|\,\underbrace{t}_{\text{time}}
+\,\|\,\underbrace{\mathrm{TTL}}_{\le \tau_{\mathrm{TTL}}}
+\,\|\,\underbrace{\mathrm{policy\_hash}}_{\text{pinned}}
+\,\|\,\underbrace{\mathrm{constraints\_hash}}_{\text{pinned}}
+\,\|\,\underbrace{\mathrm{cmd\_hash}}_{\text{requested actuation}}
+\Bigr).
+\label{eq:hot_grant_token}
+\end{equation}
+The fields ensure that (i) the grant is context-bound (session), (ii) unique (decision id), (iii) time-bounded (TTL),
+and (iv) binds the policy version, constraint evaluation snapshot, and intended command to the token.
+The scheduler may execute the granted action only if $\tau_t$ verifies under $k_{\mathrm{hot}}$ and has not expired.
+
+\paragraph{TTL semantics (hard contract).}
+Let $\tau_{\mathrm{TTL}}$ be a published bound. Enforce:
+\begin{equation}
+t_{\mathrm{exec}} - t \le \tau_{\mathrm{TTL}}
+\quad\Longrightarrow\quad \text{execution admissible under }\tau_t,
+\qquad
+t_{\mathrm{exec}} - t > \tau_{\mathrm{TTL}}
+\quad\Longrightarrow\quad \text{deny / re-request}.
+\label{eq:ttl_semantics}
+\end{equation}
+This prevents replay and forces the system to refresh grants under current telemetry and current policy state.
+
+\paragraph{Cold-path batching (Merkle compression + public-key signature).}
+Publishing every $\tau_t$ with a public-key signature is expensive and slow. Instead, batch $N$ hot-path grants into a
+Merkle tree over a cold epoch window $j$:
+\begin{equation}
+\mathrm{Leaf}_i := \mathrm{Hash}(\tau_{t_i}),
+\qquad
+\mathrm{Root}_j := \mathrm{MerkleRoot}(\mathrm{Leaf}_1,\ldots,\mathrm{Leaf}_N).
+\label{eq:merkle_batch}
+\end{equation}
+Then sign only the root:
+\begin{equation}
+\sigma_j := \mathrm{Sign}_{k_{\mathrm{cold}}}\!\bigl(\mathrm{Root}_j \,\|\, j \,\|\, t^{(j)}_{\min}\,\|\,t^{(j)}_{\max}\bigr),
+\label{eq:cold_signature}
+\end{equation}
+and publish $(\sigma_j,\mathrm{Root}_j)$ to the durable audit channel. Each hot grant is later provable via a Merkle path.
+
+\paragraph{Linking \texttt{ATTEST\_BUNDLE} to the grant.}
+To prevent ``grant without evidence,'' define the \texttt{ATTEST\_BUNDLE} as a structured record whose digest is the
+\emph{constraints\_hash} bound into \cref{eq:hot_grant_token}. Minimal fields:
+\begin{equation}
+\mathrm{constraints\_hash} := \mathrm{Hash}\!\bigl(
+\sigma_{\max}(t),\ \texttt{YELLOW}(t),\ \Gamma(t;\Delta),\ \delta_g(t),\ \|\mathcal{D}(\hat{u}_{\mathrm{safe}})\|,
+\ r_P,\ r_{\sigma},\ \mathrm{time\_quality},\ \mathrm{telemetry\_hash}\bigr).
+\label{eq:constraints_hash}
+\end{equation}
+The cold path stores the full record (or a content-addressed pointer), but the hot path binds it by hash.
+
+\paragraph{Monotone counters and anti-rollback.}
+The \texttt{decision\_id} is a monotone counter stored in secure hardware (TPM/TEE) and included in every token.
+An auditor can detect any missing or duplicated decision ids in a signed cold epoch.
+
+\paragraph{Failure mode: audit lag and automatic contraction.}
+Define a cold-path freshness budget $\tau_{\mathrm{cold}}$ and require that a root signature covering hot grants is
+published within that budget:
+\begin{equation}
+t_{\mathrm{publish}}(\sigma_j) - t^{(j)}_{\max} \le \tau_{\mathrm{cold}}.
+\label{eq:cold_budget}
+\end{equation}
+If \cref{eq:cold_budget} is violated, the system enters a conservative state:
+\begin{equation}
+\texttt{AUDIT\_LAG}=1
+\quad\Longrightarrow\quad
+\sigmax(t)\leftarrow 1,\ \ \text{deny new sprints, and/or force }\texttt{YELLOW}.
+\label{eq:audit_lag_fail_safe}
+\end{equation}
+This makes audit integrity a first-class safety predicate: if you cannot prove what happened, you lose high-risk authority.
+
+\paragraph{Auditor-facing checklist (what must be reconstructible).}
+An external auditor must be able to reconstruct, from published artifacts:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item the sequence of hot-path $\tau_t$ tokens and their TTL validity,
+  \item inclusion proofs of each $\tau_t$ under a signed $\mathrm{Root}_j$,
+  \item the bound \texttt{constraints\_hash} and corresponding \texttt{ATTEST\_BUNDLE} content (or content address),
+  \item cold-path budget compliance \cref{eq:cold_budget},
+  \item fail-safe transitions caused by \texttt{AUDIT\_LAG}.
+\end{enumerate}
+This preserves the core thesis: \emph{control stays fast; proof stays complete}.
+
+% ---------------------------------------------------------------------
+% Appendix M.5 — Dissipative Shunt Interlock (LOAD REJECTION HARD INTERLOCK)
+% ---------------------------------------------------------------------
+\subsection{Dissipative Shunt Interlock: Hardware Enforcement for Step-to-Zero Load Rejection}
+\label{appN:shunt_interlock}
+
+\paragraph{Why software ramping is insufficient.}
+The manuscript’s \texttt{YELLOW} logic defines a ramp-controlled soft landing. That is necessary for \emph{commanded}
+degradation (the scheduler can cooperate). It is not sufficient for \emph{faulted} degradation: a compute-side breaker
+trip or bus fault can drop $\PAI$ to near-zero instantaneously. In that regime, a ``ramp-down'' is physically impossible.
+
+In SMR--AI coupling, abrupt load rejection creates a fast mismatch between:
+\begin{itemize}
+  \item \textbf{thermal generation and balance-of-plant inertia} (slow to change),
+  \item \textbf{electrical demand} (can collapse in milliseconds),
+  \item \textbf{grid/POI constraints} (may penalize rapid excursions).
+\end{itemize}
+If the plant sees an abrupt removal of electrical sink, it can force protective actions (derate or trip) even when
+the reactor core is within nominal limits. Therefore, the ``soft landing'' must be upgraded with a \emph{hard
+energy sink} that makes step-to-zero events \emph{contractibly survivable}.
+
+\paragraph{Interlock primitive (conservation-based).}
+Install a dissipative shunt pathway (dump load and/or fast storage absorber) sized to absorb the largest admissible
+sprint authority. Define:
+\begin{equation}
+P_{\mathrm{shunt}}(t) := P_{\mathrm{target}}(t) - P_{\mathrm{AI,actual}}(t),
+\label{eq:shunt_law}
+\end{equation}
+with physical actuation time
+\begin{equation}
+\tau_{\mathrm{shunt}} \le \tau_{\mathrm{max}},
+\label{eq:shunt_time}
+\end{equation}
+where $\tau_{\mathrm{max}}$ is the maximum mismatch duration consistent with BOP/POI stability margins
+(documented in the plant studies / protection constraints).
+
+\paragraph{Hardware realizations (contract-agnostic).}
+The interlock does not require a specific topology; it requires \emph{bounded response}. Three realizations fit:
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Resistive dump load bank (fastest, simplest):} thyristor-switched resistor banks on a DC bus or via
+        an inverter, sized to the sprint headroom.
+  \item \textbf{Battery / supercapacitor absorber (bidirectional):} absorbs energy on load drop, can later re-inject or
+        dissipate through controlled discharge.
+  \item \textbf{Thermal energy storage (TES) sink (slow, secondary):} not fast enough for millisecond rejection, but
+        can be part of the longer rebalancing after the immediate event.
+\end{enumerate}
+The contract should specify the declared topology and the certified response envelope.
+
+\paragraph{Two-layer safety semantics (software + hardware).}
+We define the interlock as a two-layer system:
+
+\begin{itemize}
+  \item \textbf{Layer 1 (software):} \texttt{YELLOW} ramp-down \cref{eq:m_yellow_ramp} for cooperative degradation.
+  \item \textbf{Layer 2 (hardware):} shunt interlock for non-cooperative discontinuities.
+\end{itemize}
+
+The hard requirement is: \emph{the hardware layer dominates the worst-case discontinuity.}
+Therefore, sprint authority above baseload is permitted only if \texttt{SHUNT\_READY}=1.
+
+\paragraph{Shunt readiness predicate (admissibility hard deck).}
+Define:
+\begin{equation}
+\texttt{SHUNT\_READY}(t)=1
+\iff
+\Bigl(\mathrm{SOC}(t)\ge \mathrm{SOC}_{\min}\Bigr)\ \land\
+\Bigl(P_{\mathrm{shunt,max}}\ge (\sigmax(t)-1)\Pbase\Bigr)\ \land\
+\Bigl(\tau_{\mathrm{shunt}}\le \tau_{\mathrm{max}}\Bigr),
+\label{eq:shunt_ready}
+\end{equation}
+where $\mathrm{SOC}(t)$ is the state-of-charge (if storage is used), $P_{\mathrm{shunt,max}}$ is the certified shunt
+absorption capability, and $\tau_{\mathrm{shunt}}$ is the measured/qualified response time.
+This predicate is non-ML and therefore legally clean.
+
+\paragraph{Event handling (step-to-zero fault).}
+On detection of a load rejection event (e.g., $\PAI$ drops below a threshold within a short window), the interlock fires:
+\begin{equation}
+\PAI(t)\downarrow \ \Rightarrow\ P_{\mathrm{shunt}}(t)\uparrow\ \text{such that}\ 
+P_{\mathrm{AI,actual}}(t)+P_{\mathrm{shunt}}(t)\approx P_{\mathrm{target}}(t).
+\label{eq:shunt_event}
+\end{equation}
+The goal is not perfect equality; the goal is to enforce that the mismatch stays within a documented envelope:
+\begin{equation}
+\left|P_{\mathrm{target}}(t)-\bigl(P_{\mathrm{AI,actual}}(t)+P_{\mathrm{shunt}}(t)\bigr)\right|
+\le \Delta P_{\max},
+\qquad
+\left|\frac{d}{dt}\bigl(P_{\mathrm{AI,actual}}+P_{\mathrm{shunt}}\bigr)\right|
+\le \left(\frac{dP}{dt}\right)_{\max}.
+\label{eq:shunt_envelope}
+\end{equation}
+These bounds connect directly to POI flicker limits, turbine/valve constraints, and protection margins.
+
+\paragraph{Interface to economics (pricing the interlock).}
+The shunt layer is not ``free''; it has capital and efficiency costs. Contractually, it can be priced as either:
+(i) an availability adder (capacity payment for $P_{\mathrm{shunt,max}}$), or
+(ii) an energy adder (losses incurred during shunt absorption events).
+Crucially, the shunt makes the system \emph{insurable}: without it, step-to-zero events dominate tail risk and
+render high sprint authority economically irrational even if nominal thermal headroom exists.
+
+\paragraph{Log artifacts and dispute resolution.}
+To keep this contractible, log the minimum sufficient evidence:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Trigger evidence:} timestamped current/voltage or power measurements demonstrating $\PAI$ collapse.
+  \item \textbf{Actuation evidence:} shunt command and measured shunt power $P_{\mathrm{shunt}}(t)$ with response time
+        verification against $\tau_{\mathrm{max}}$.
+  \item \textbf{Envelope compliance:} computed mismatch and ramp-rate terms in \cref{eq:shunt_envelope}.
+  \item \textbf{Readiness proof:} the predicate fields in \cref{eq:shunt_ready} at the time of admitted sprint authority.
+\end{enumerate}
+If an incident occurs, these artifacts define whether it is classified as (i) shunt failure, (ii) compute-side fault,
+or (iii) exogenous grid/plant fault under the incident taxonomy, and thus whether the collateral account liquidates.
+
+\newpage
+
+% =====================================================================
+% APPENDIX N — ZERO-KNOWLEDGE AUDIT FOR STIFF TRANCHES (PRIVACY BRIDGE)
+% (Merged: preserves prior depth; adds binding, batching/recursion, and
+% canonical ZK anchors + Merkle transcript discipline)
+% =====================================================================
+\section{Zero-Knowledge Audit for Stiff Tranches: Privacy-Preserving Verifiability}
+\label{appN:zk_audit}
+
+This appendix defines a \emph{privacy bridge} for contractible SMR--AI co-control: how to make stiff, proprietary,
+or security-sensitive compute \emph{auditable} without revealing model weights, private inputs, or sensitive data.
+The objective is not to propose a universal zk system, but to specify \emph{contractible proof obligations} and
+\emph{log artifacts} that allow underwriting, regulatory review, and dispute resolution under secrecy constraints.
+\footnote{Epistemic scope: this is an \emph{institutional interface specification}. Practical feasibility depends on
+proof-system choice (SNARK/STARK), circuit design, key custody, and performance engineering. The contractible point is
+that the \emph{public statement}, \emph{binding to the audit bundle}, and \emph{settlement consequences} are explicit.}
+
+\subsection{Why the baseline replay audit is insufficient for stiff tranches}
+\label{appN:motivation}
+
+Appendix~F and Appendix~M define replay auditability: deterministic predicates over signed telemetry and logged
+constraint evaluations allow an external reviewer to reconstruct decisions without access to model weights. That is
+sufficient when (i) the oracle/guardian is \emph{not proprietary}, or (ii) the relevant computations can be disclosed
+during audit.
+
+However, the stiff tranche often violates these conditions. Examples include proprietary training runs, security models,
+or high-value inference where weights, prompts, or datasets cannot be disclosed even under NDA. In these regimes,
+baseline replay proofs are structurally incomplete: they can verify \emph{interface compliance} (gating, ramp policies,
+telemetry quality), but cannot verify \emph{correct execution} of the claimed computation that underpins Goodput
+settlement or safety-critical inference.
+
+The gap is therefore:
+\begin{quote}
+\textbf{Secrecy vs. auditability:} the institution demands proof that a specific computation occurred correctly, while
+the operator refuses to disclose the private artifacts that would enable ordinary verification.
+\end{quote}
+
+\subsection{Threat model and audit goals}
+\label{appN:threat_model}
+
+We specify the adversary in the narrow sense relevant to settlement and underwriting:
+
+\begin{assumption}[Adversary classes]
+\label{assump:zk_adversary}
+The auditor must be robust to the following classes:
+\begin{enumerate}[label=\textbf{A\arabic*.}]
+  \item \textbf{Execution fraud:} the operator claims a computation was executed (e.g., training steps, safety inference)
+        but performs a cheaper surrogate (or no meaningful work) while still drawing energy.
+  \item \textbf{Model substitution:} the operator executes a different model than the one authorized (e.g., a weaker or
+        unverified model) while claiming to use the committed one.
+  \item \textbf{Input substitution:} the operator uses different inputs than declared (e.g., tampered telemetry slice or
+        unapproved dataset), especially in dispute windows.
+  \item \textbf{Selective disclosure:} the operator reveals only favorable internal logs and withholds adverse details.
+\end{enumerate}
+\end{assumption}
+
+The audit goal is not to reveal secrets. It is to enable a third party to verify a statement of the form:
+\begin{quote}
+\emph{``I executed the committed computation on committed inputs and produced this output, under this policy tier,
+and the evidence is consistent with that claim.''}
+\end{quote}
+
+\subsection{Statement language: commitments, relation, and proof objects}
+\label{appN:statement_language}
+
+Let $H_{\mathrm{model}}$ be a commitment to the authorized model artifact (weights + architecture + version id).
+Let $H_{\mathrm{in}}$ be a commitment to private inputs relevant to a claim (telemetry slice, batch id, checkpoint id,
+or seed commitments). Let $y$ be the public output used by control/settlement (e.g., a gradient digest, step digest,
+or signed inference record). The operator produces a zk proof $\pi_{\mathrm{zk}}$.
+
+We formalize this as an NP relation:
+\begin{equation}
+\mathcal{R}
+:= \Bigl\{
+(y, H_{\mathrm{model}}, H_{\mathrm{in}}, \mathsf{ctx})\ ;\
+\exists w:\ C(y, w, H_{\mathrm{model}}, H_{\mathrm{in}}, \mathsf{ctx})=1
+\Bigr\},
+\label{eq:zk_relation_full}
+\end{equation}
+where:
+\begin{itemize}
+  \item $w$ is the private witness: weights, private inputs, internal randomness, and any secrets;
+  \item $C$ is an arithmetic circuit (or equivalent) encoding the declared computation (or rollup);
+  \item $\mathsf{ctx}$ is public context: policy tier, approved circuit id, time window, and any fixed hyperparameters.
+\end{itemize}
+
+\paragraph{Verification predicate.}
+The verifier checks:
+\[
+\mathrm{Verify}(\pi_{\mathrm{zk}}, y, H_{\mathrm{model}}, H_{\mathrm{in}}, \mathsf{ctx})=\texttt{True}
+\quad\Rightarrow\quad
+(y,H_{\mathrm{model}},H_{\mathrm{in}},\mathsf{ctx})\in\mathcal{R}.
+\]
+
+\paragraph{Canonical ZK anchors.}
+The proof system is implementation-chosen, but must satisfy the standard completeness/soundness/zero-knowledge properties
+under standard assumptions; succinct argument systems such as Groth-style SNARKs or Pinocchio-style verifiable computation
+are canonical reference points for the intended “verify-fast / prove-slower” audit posture \citep{groth2016,parno2013_pinocchio}.
+\footnote{Contract design recommendation: bind the \emph{statement interface} and required security properties, not a specific
+proving system. The operator publishes the selected system parameters, trusted setup posture (if any), and verification keys
+as part of the compliance packet.}
+
+\subsection{What computation gets proven (tiered circuit scope)}
+\label{appN:circuit_scope}
+
+A full ``prove every multiply'' zk proof for modern training is typically impractical. Institutional adoption requires
+policy-tiering:
+
+\begin{definition}[Proof tier]
+\label{def:proof_tier}
+A proof tier $\tau\in\{\tau_0,\tau_1,\tau_2\}$ specifies what is proven:
+\begin{enumerate}[label=\textbf{\(\tau_{\arabic*}\)}]
+  \item \textbf{$\tau_0$ (interface-only):} no zk proof; baseline replay audit only (Appendix~F).
+  \item \textbf{$\tau_1$ (spot-check zk):} zk proof for randomly challenged \emph{substeps} (mini-batches / microsteps),
+        amortized over time; aligns with PoUW spot-checking (Appendix~M).
+  \item \textbf{$\tau_2$ (rollup zk):} zk proof over bounded rollups (e.g., $N$ steps) for high-stakes tranches, with
+        explicit cost and latency budgets.
+\end{enumerate}
+\end{definition}
+
+This tiering makes Appendix~N contractible: the institution chooses $\tau$ based on secrecy and risk tolerance.
+
+\subsection{Protocol integration: how zk proofs enter the \texttt{ATTEST\_BUNDLE}}
+\label{appN:bundle_integration}
+
+For each audit window (decision time, settlement epoch, or dispute period), append to \texttt{ATTEST\_BUNDLE}:
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item $H_{\mathrm{model}}$: model commitment (hash / artifact id).
+  \item $H_{\mathrm{in}}$: input commitment (telemetry slice / batch id / seed commitment).
+  \item $y$: declared output artifact used for control or settlement (must be deterministic given witness).
+  \item $\pi_{\mathrm{zk}}$: the proof object.
+  \item $\mathsf{ctx}$: policy tier $\tau$, circuit id, window id, and timestamp domain separators.
+\end{enumerate}
+
+\paragraph{Domain separation.}
+All commitments include domain separators to prevent reuse across contexts:
+\[
+H_{\mathrm{model}}=\mathsf{H}(\texttt{MODEL} \,\|\, \texttt{version} \,\|\, \texttt{artifact}),
+\qquad
+H_{\mathrm{in}}=\mathsf{H}(\texttt{INPUT} \,\|\, \texttt{window} \,\|\, \texttt{payload}).
+\]
+
+\paragraph{Context binding (anti-replay, settlement-safe).}
+To prevent the same proof from being replayed across windows or counterparties, define a bundle commitment
+\begin{equation}
+H_{\mathrm{bundle}}
+:= \mathsf{H}\!\Bigl(
+\texttt{RID}\ \|\ t_{\mathrm{start}}\ \|\ t_{\mathrm{end}}\ \|\ \texttt{TQ}\ \|\ H_{\mathrm{model}}\ \|\ H_{\mathrm{in}}\ \|\ \mathsf{H}(y)\ \|\ \mathsf{ctx}
+\Bigr),
+\label{eq:zk_bundle_commit}
+\end{equation}
+and require $H_{\mathrm{bundle}}$ as a \emph{public input} to the ZK statement (i.e., included inside $\mathsf{ctx}$).
+\footnote{Operational intent: the proof is not merely “this computation happened,” but “this computation happened \emph{for this
+window and this settlement context}.” This closes the most common institutional exploit: valid proofs reused out of context.}
+
+\subsection{Batching and rollups: transcript discipline via Merkle commitments}
+\label{appN:batching_rollups}
+
+ZK proofs should not sit on the microsecond control hot-path. The binding mechanism above allows proofs to be generated on
+audit/settlement epochs while still being cryptographically tethered to the exact control transcript.
+
+\paragraph{Merkle transcript root.}
+Let $\{\ell_i\}_{i=1}^m$ be the ordered micro-artifacts for a window (e.g., per-step commitments, PoUW challenge indices,
+accepted grants, feature digests). Commit them via a Merkle tree and publish the root $R_t$ \citep{merkle1980}.
+Then set $H_{\mathrm{in}}:=R_t$ (or include $R_t$ inside $H_{\mathrm{in}}$) so the ZK statement binds to the entire transcript.
+
+\paragraph{Selective opening (dispute-friendly).}
+During a dispute, the operator can reveal Merkle inclusion proofs for a subset of leaves without disclosing the full
+transcript, preserving secrecy while still allowing targeted adjudication.
+
+\paragraph{Recursive rollups (optional).}
+If the chosen proof system supports recursion, proofs for sub-windows can be rolled into a single proof for a longer
+settlement epoch. This is \emph{optional} in the contract but encouraged for Tier-$\tau_2$ tranches where proof frequency
+matters more than proof granularity.
+
+\subsection{Soundness, completeness, and privacy (contractible claims)}
+\label{appN:zk_properties}
+
+We do not claim absolute security; we claim the standard cryptographic properties under standard assumptions for the
+chosen proof system.
+
+\begin{definition}[Proof-system properties]
+\label{def:zk_properties}
+A zk proof system satisfies:
+\begin{itemize}
+  \item \textbf{Completeness:} honest execution yields verifiable proof.
+  \item \textbf{Soundness:} a cheating prover cannot convince the verifier of a false statement except with negligible
+        probability.
+  \item \textbf{Zero-knowledge:} the proof reveals no additional information about the witness beyond statement truth.
+\end{itemize}
+\end{definition}
+
+\paragraph{Contractible posture.}
+For underwriting, the operative claim is: \emph{if} $\mathrm{Verify}(\cdot)=\texttt{True}$, then the operator is bound
+to have executed the committed computation (within the modeled circuit scope), or else has broken the proof system.
+
+\subsection{Dispute semantics and slashing rules}
+\label{appN:dispute}
+
+A Goodput PPA requires dispute hooks. Appendix~N supplies the verification step; the contract supplies consequences.
+
+\begin{definition}[Proof failure event]
+\label{def:proof_failure}
+A proof failure occurs if either (i) $\pi_{\mathrm{zk}}$ is missing for a required tier, or (ii) verification fails:
+$\mathrm{Verify}(\pi_{\mathrm{zk}},\cdot)=\texttt{False}$.
+\end{definition}
+
+\paragraph{Settlement rule (generic).}
+If proof failure occurs in a settlement epoch, define:
+\[
+\texttt{PPA\_credit} = 0 \quad \text{for the disputed portion,}
+\]
+and trigger the collateral/liquidation semantics already defined in Appendix~M (MCA balance update).
+
+\paragraph{Quorum verification (institutional hardening).}
+To reduce claims of verifier malfunction or implementation disputes, the contract may require a quorum of verifiers:
+$V_1,\ldots,V_q$ and acceptance threshold $q^\star$ such that
+\[
+\sum_{j=1}^{q}\mathbb{1}\{\mathrm{Verify}_j(\pi_{\mathrm{zk}},\cdot)=\texttt{True}\}\ \ge\ q^\star
+\quad \Rightarrow \quad \texttt{Accept},
+\]
+with verifier identities and keys registered in advance.
+
+\subsection{Cost/latency constraints and why tiering is essential}
+\label{appN:cost_latency}
+
+Public-key primitives and zk proofs are expensive relative to microsecond-scale control loops.
+Accordingly, Appendix~N is explicitly \emph{not} on the hot path. It binds \emph{settlement} and \emph{audit},
+not instantaneous stability.
+
+\begin{proposition}[Separation of concerns]
+\label{prop:zk_off_hot_path}
+If (i) control decisions use the baseline admissibility predicates over signed telemetry (Appendix~F) and (ii) zk proofs
+are emitted on audit/settlement epochs, then the control loop latency is not dominated by zk proof generation.
+\end{proposition}
+
+\begin{remark}[Institutional usage]
+Appendix~N is triggered when secrecy would otherwise prevent underwriting. For non-secret tranches, do not pay the zk tax.
+\end{remark}
+
+\subsection{Required implementation deliverables (to move from framework to validated posture)}
+\label{appN:deliverables}
+
+To convert Appendix~N from a framework to validated literature, the following must exist:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item a concrete proving system selection and parameter posture (setup assumptions, key custody);
+  \item benchmarked proof generation/verification costs on target infrastructure;
+  \item circuit definitions for the chosen proof tier(s), with clear witness boundaries;
+  \item transcript commitment discipline (Merkle root semantics) and dispute-time selective opening rules;
+  \item adversarial evaluation: model substitution, input substitution, replay attacks, and selective disclosure failure modes;
+  \item an explicit dispute policy mapping proof failures to settlement and collateral actions (Appendix~M).
+\end{enumerate}
+
+\paragraph{Summary.}
+Appendix~N does not claim that zk makes AI ``safe.'' It makes stiff tranches \emph{auditable under secrecy} by defining
+what must be proven, what must be logged, and how proof outcomes bind settlement and liability.
+
+\newpage
+
+% =====================================================================
+% APPENDIX O — ENTROPIC GUARDRAILS & THERMODYNAMIC QUALITY (ANTI-WASTE)
+% (Upgraded: preserves your structure; adds (i) explicit “quality” as
+% an auditable contract object, (ii) information-theoretic + systems
+% control interpretations, (iii) anti-gaming discipline, and
+% (iv) optional privacy-preserving binding to Appendix N)
+% =====================================================================
+\section{Entropic Guardrails: Thermodynamic Quality, Entropy Production, and Low-Value Compute Cutouts}
+\label{appO:entropic_guardrails}
+
+This appendix extends the Goodput PPA and the admissibility contract with a \emph{quality-of-work} layer.
+Power ($P$) and temperature ($T$) constrain \emph{quantity} of compute, but do not guarantee that compute is
+\emph{useful}. In a heat-rejection-limited SMR--AI system, low-value compute is not merely an economic inefficiency;
+it is a thermodynamic externality that consumes scarce thermal margin and narrows disturbance-handling headroom.
+
+The design goal is contractible:
+\begin{quote}
+\textbf{Quality as an auditable primitive:} define a deterministic, replayable functional over signed counters that
+detects high-entropy / low-integrity compute regimes early enough to preserve thermal headroom, and bind the result to
+curtailment authority and (optionally) settlement.
+\end{quote}
+
+\paragraph{Interpretive caution.}
+Throughout, ``entropy'' is used \emph{operationally} (as a proxy over logged execution and verification artifacts),
+not metaphysically. The contract binds the \emph{functional} and its \emph{audit recipe}, not a claim about the true
+thermodynamic entropy of silicon.\footnote{If a tighter thermodynamic grounding is desired, Appendix~M already constrains
+settlement against a thermodynamic envelope. Appendix~O adds a \emph{quality discriminator} so that the same joules do not
+automatically count as the same economic or operational value.}
+
+% ---------------------------------------------------------------------
+% O.1 Threat Model
+% ---------------------------------------------------------------------
+\subsection{Threat model: ``heat without value'' as an operational hazard}
+\label{appO:threat}
+
+We consider three sources of thermodynamic waste that matter for settlement and safety posture:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Adversarial waste:} an attacker induces compute that burns energy without producing valid work
+        (e.g., forcing retry storms, poisoning verification, or triggering low-value search loops).
+  \item \textbf{Pathological loops:} the workload enters unstable regimes (divergent optimization, thrashing,
+        repeated retries, oscillatory checkpointing) that convert energy into heat while degrading output integrity.
+  \item \textbf{Verifier-friction waste:} the system produces outputs that fail post-hoc checks (PoUW / zk / audit),
+        implying energy spent is not creditable Goodput even if power and temperature remain within bounds.
+\end{enumerate}
+
+Appendix~O supplies an early-warning cutout that acts \emph{before} hard thermal limits bind, by assigning a
+\emph{quality penalty} to observed execution trajectories.
+
+% ---------------------------------------------------------------------
+% O.2 Observables
+% ---------------------------------------------------------------------
+\subsection{Observable state: what the controller is allowed to use}
+\label{appO:observables}
+
+Let $\Xi(t)$ denote a vector of auditable counters and signals available from:
+(i) job execution logs (signed), (ii) verification subsystem outputs (PoUW or zk status),
+and (iii) platform telemetry (energy, performance counters). Examples include:
+\[
+\Xi(t) = \Bigl[
+\texttt{tokens/s},\ \texttt{steps/s},\ \texttt{loss trend},\ \texttt{grad norm},\ \texttt{retry rate},\
+\texttt{verifier pass rate},\ \texttt{divergence flags},\ \texttt{energy-in},\ \texttt{perf counters},\
+\texttt{OOM/fault counts},\ \texttt{checkpoint rollbacks}
+\Bigr].
+\]
+Contractibility constraint: each component of $\Xi$ must be (a) logged, (b) signed, and (c) reconstructible under replay.
+
+\paragraph{Anti-gaming principle.}
+Counters used in quality decisions must be chosen so that they are difficult to inflate without paying real cost.
+For example, \texttt{tokens/s} alone is gameable; coupling it to \texttt{verifier pass rate} and \texttt{energy-in}
+creates a multi-signal constraint that penalizes ``paperwork goodput''.\footnote{Institutional posture: publish the
+\emph{feature list} and \emph{recipe}, but allow some features to be computed inside a secure enclave or proven via
+Appendix~N if disclosure itself creates new attack surface.}
+
+% ---------------------------------------------------------------------
+% O.3 Entropy-production proxy
+% ---------------------------------------------------------------------
+\subsection{Definition of entropy-production proxy (operational, not metaphysical)}
+\label{appO:entropy_proxy}
+
+We define a \emph{proxy} for entropy production that maps observed execution into an auditable scalar.
+Multiple choices are allowed; the contract binds only that the functional is deterministic, published, and replayable.
+
+\begin{definition}[Entropy-production proxy]
+\label{def:entropy_proxy}
+Fix a horizon $\Delta>0$. Define:
+\begin{equation}
+\Delta S(t;\Delta) := \mathcal{E}\bigl(\Xi([t,t+\Delta])\bigr),
+\label{eq:entropy_proxy}
+\end{equation}
+where $\mathcal{E}$ is a deterministic functional (feature extraction + aggregation) whose parameters are included
+in \texttt{ATTEST\_BUNDLE} (or committed by hash with versioned release).
+\end{definition}
+
+\paragraph{One contractible instantiation (tri-channel waste decomposition).}
+A practical proxy decomposes ``waste'' into three auditable channels:
+\begin{equation}
+\Delta S(t;\Delta)
+= \beta_1 \,\mathrm{Thrash}(t;\Delta)
++ \beta_2 \,\mathrm{Reject}(t;\Delta)
++ \beta_3 \,\mathrm{Instab}(t;\Delta),
+\label{eq:entropy_decomp}
+\end{equation}
+where:
+\begin{itemize}
+  \item $\mathrm{Thrash}$ measures retry/recompute intensity (e.g., repeated failures, checkpoint rollbacks, OOM loops);
+  \item $\mathrm{Reject}$ measures fraction of work rejected by PoUW/zk checks in the same horizon;
+  \item $\mathrm{Instab}$ measures instability indicators (loss explosion, gradient spikes, nonconvergence flags).
+\end{itemize}
+
+\paragraph{Normalization (scale-free comparability).}
+To prevent trivial scaling artifacts across job sizes, define each channel as a normalized rate:
+\[
+\mathrm{Thrash}:=\frac{\#\texttt{retries}+\#\texttt{rollbacks}}{\#\texttt{attempted steps}+1},\quad
+\mathrm{Reject}:=1-\frac{\#\texttt{verified steps}}{\#\texttt{attempted steps}+1},\quad
+\mathrm{Instab}:=\frac{\#\texttt{instability flags}}{\#\texttt{attempted steps}+1}.
+\]
+Then $\Delta S$ behaves as a bounded, comparable indicator across epochs.
+
+\paragraph{Information-theoretic interpretation (optional but legible).}
+In many workloads, instability corresponds to increased unpredictability of state updates (e.g., step-to-step
+variance inflation). A generic operational surrogate is the \emph{surprisal rate} of update outcomes:
+\[
+\mathcal{E}_{\mathrm{surp}} := \frac{1}{N}\sum_{i=1}^{N} -\log p_{\theta}\!\left(\Delta w_i \mid \text{context}_i\right),
+\]
+where $p_\theta$ is a \emph{published} reference density model (or a validated calibration model) over update deltas.
+This is not required, but it provides a transparent bridge to classical entropy-rate concepts.\footnote{If $p_\theta$
+is proprietary or security-sensitive, it can be committed by hash and proved in zero-knowledge (Appendix~N) that the
+surprisal computation was performed correctly on committed inputs, without revealing the model itself.}
+
+% ---------------------------------------------------------------------
+% O.4 Thermodynamic coupling
+% ---------------------------------------------------------------------
+\subsection{Thermodynamic coupling: why this is safety-relevant}
+\label{appO:thermo}
+
+Let $E(t;\Delta)$ denote measured electrical energy into compute over $[t,t+\Delta]$. Let $Q_{\mathrm{rej}}^{\max}$
+be the effective heat-rejection ceiling and let $Q_{\mathrm{rej}}(t)$ be measured/estimated heat rejection.
+Even if the plant remains within limits, sustained low-value compute consumes the same thermal headroom as high-value work,
+reducing safety margin to handle disturbances (grid transients, plant drifts, protection actions).
+
+Define a quality-adjusted useful-work measure:
+\begin{equation}
+G_{\mathrm{eff}}(t;\Delta) := G(t;\Delta)\cdot \bigl(1-\omega(t;\Delta)\bigr),
+\label{eq:goodput_eff}
+\end{equation}
+where $G$ is attested Goodput and $\omega$ is a waste fraction derived from $\Delta S$ (monotone map).
+
+\begin{assumption}[Monotone waste mapping]
+\label{assump:waste_map}
+There exists a nondecreasing function $h(\cdot)$ such that $\omega(t;\Delta)=h(\Delta S(t;\Delta))\in[0,1]$.
+\end{assumption}
+
+\paragraph{A contractible choice for $h$.}
+A simple bounded map is logistic:
+\[
+h(s)=\frac{1}{1+\exp(-a(s-b))},
+\]
+with $(a,b)$ published and versioned. This avoids discontinuities while allowing sharp transitions when warranted.
+
+\paragraph{Quality as a thermal headroom protector.}
+Define a \emph{quality-to-thermal} stress indicator:
+\begin{equation}
+\Phi(t;\Delta) := \frac{E(t;\Delta)}{G_{\mathrm{eff}}(t;\Delta)+\epsilon},
+\label{eq:phi_tokens_per_joule_inverse}
+\end{equation}
+which measures Joules per quality-adjusted unit of work (inverse of Tokens/J-like efficiency). Rising $\Phi$ is an
+early indicator of ``heat without value,'' and can be acted on prior to thermal constraint violation.
+
+% ---------------------------------------------------------------------
+% O.5 Entropic veto rule
+% ---------------------------------------------------------------------
+\subsection{Entropic veto rule (quality cutout)}
+\label{appO:veto}
+
+\begin{definition}[Entropic veto]
+\label{def:entropy_veto}
+Fix thresholds $\delta_{\mathrm{crit}}$ and a persistence window $\tau_S$. Define:
+\begin{equation}
+\texttt{ENTROPY\_VETO}(t)=1
+\iff
+\left(\Delta S(t;\Delta)>\delta_{\mathrm{crit}}\right)\ \land\
+\left(\text{persists for at least }\tau_S\right).
+\label{eq:entropy_veto}
+\end{equation}
+\end{definition}
+
+\paragraph{Control action (priority order).}
+On \texttt{ENTROPY\_VETO}, the controller:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item curtails the \emph{flexible tranche} first (never the safety tranche),
+  \item reduces sprint authority $\sigmax$ according to a published derating law,
+  \item may enter \texttt{YELLOW} if veto coincides with other anomaly gates (Appendix~M),
+  \item logs an explicit \emph{quality trace} describing which channels dominated $\Delta S$.
+\end{enumerate}
+
+A contractible derating law is:
+\begin{equation}
+\sigmax(t+\delta) :=
+\max\left\{\sigma_{\mathrm{safe}},\ \sigmax(t) - \eta_S \cdot (\Delta S(t;\Delta)-\delta_{\mathrm{crit}})_+\right\},
+\label{eq:sigma_derate_entropy}
+\end{equation}
+with $\eta_S>0$ a published gain.
+
+\paragraph{Traceability (audit-facing decomposition).}
+To avoid ``black-box quality,'' define the logged components:
+\[
+\texttt{QUAL\_TRACE}(t)=\left\langle \mathrm{Thrash}(t;\Delta),\ \mathrm{Reject}(t;\Delta),\ \mathrm{Instab}(t;\Delta),\
+\Delta S(t;\Delta),\ \delta_{\mathrm{crit}},\ \tau_S \right\rangle.
+\]
+This allows an external reviewer to replay the veto decision deterministically.
+
+% ---------------------------------------------------------------------
+% O.6 Calibration and anti-DoS posture
+% ---------------------------------------------------------------------
+\subsection{Calibration: false positives, budgets, and institutional tolerances}
+\label{appO:calibration}
+
+A quality veto that triggers too often becomes a denial-of-service vector. Therefore, Appendix~O requires
+explicit calibration artifacts.
+
+\begin{definition}[Veto false-positive budget]
+\label{def:fp_budget}
+Let $\pi_{\mathrm{FP}}$ be the maximum tolerated false-positive rate for \texttt{ENTROPY\_VETO} under benign operation.
+Calibration must demonstrate $\widehat{\pi}_{\mathrm{FP}}\le \pi_{\mathrm{FP}}$ on representative benign suites.
+\end{definition}
+
+\paragraph{Dual-threshold posture (optional).}
+Institutions often prefer separating \emph{warning} from \emph{cutout}. Define $\delta_{\mathrm{warn}}<\delta_{\mathrm{crit}}$
+so that rising entropy triggers monitoring or mild derates before hard veto, reducing cliff behavior.
+
+\paragraph{Adversarial evaluation requirement.}
+Publish detection performance as ROC/PR curves over a documented suite of adversarial and pathological regimes.
+The appendix does not claim perfect detection; it requires that the institution can \emph{choose} thresholds and
+understand tradeoffs.
+
+\paragraph{Anti-gaming checks.}
+Require a periodic audit that $\Delta S$ cannot be artificially suppressed by disabling logs or shifting work outside
+the accounting perimeter. A simple contract rule is that missing counters map to conservative defaults:
+\[
+\text{if any required }\Xi\text{ component missing} \ \Rightarrow \ \Delta S \leftarrow +\infty \ \text{(veto / no credit)}.
+\]
+This prevents ``turn off the meter'' strategies.
+
+% ---------------------------------------------------------------------
+% O.7 Settlement integration
+% ---------------------------------------------------------------------
+\subsection{Economic integration: quality-weighted settlement}
+\label{appO:settlement}
+
+Appendix~O can be bound to settlement in either of two contract modes:
+
+\paragraph{Mode 1 (hard veto).}
+If \texttt{ENTROPY\_VETO} triggers, flexible compute credits are paused for that epoch.
+
+\paragraph{Mode 2 (soft quality factor).}
+Introduce a quality factor $q(t;\Delta)\in[0,1]$:
+\begin{equation}
+q(t;\Delta) := 1 - h(\Delta S(t;\Delta)),
+\qquad
+\texttt{PPA\_credit}(t;\Delta) := q(t;\Delta)\cdot \texttt{PPA\_credit}_{\mathrm{base}}(t;\Delta).
+\label{eq:quality_credit}
+\end{equation}
+
+Mode 2 is often institutionally attractive: it avoids cliff effects and converts quality into a priced lever.
+
+\paragraph{Interaction with PoUW / zk.}
+If PoUW/zk failures are already included in $\mathrm{Reject}$, then Mode~2 naturally prices verifier-friction into
+settlement. In Tier-$\tau_2$ secret tranches (Appendix~N), the \emph{quality factor itself} may be committed and proved
+in zk (``I computed $\Delta S$ and $q$ correctly from committed counters''), preserving operator secrecy while remaining
+auditable.
+
+% ---------------------------------------------------------------------
+% O.8 Audit artifacts and proof obligations
+% ---------------------------------------------------------------------
+\subsection{Audit artifacts and proof obligations}
+\label{appO:audit}
+
+To make Appendix~O binding, the following must be satisfiable from logs:
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Counter integrity:} signed logs for $\Xi(t)$ with replayable extraction.
+  \item \textbf{Determinism:} published $\mathcal{E}$ parameters and exact computation recipe for $\Delta S$.
+  \item \textbf{Trigger reconstruction:} show when \texttt{ENTROPY\_VETO} fired and why (threshold crossings + persistence).
+  \item \textbf{Action reconstruction:} show the tranche curtailments and sprint deratings invoked.
+  \item \textbf{Settlement linkage:} show how credits were adjusted (hard or soft), with the applied $q(t;\Delta)$.
+\end{enumerate}
+
+\paragraph{Minimum disclosure recipe.}
+If the operator claims that disclosing raw counters compromises security or proprietary operations, the contract may allow
+(i) committing raw counters by hash and (ii) providing either selective opening (Merkle paths) or zk proofs of correct
+$\Delta S$ computation (Appendix~N). The binding requirement is that \emph{an independent party can verify the decision
+without trusting the operator}. \footnote{This is the same institutional logic as Appendix~N: secrecy is permitted, but
+\emph{unverifiability} is not permitted when settlement and liability depend on the claim.}
+
+% ---------------------------------------------------------------------
+% O.9 Limitations
+% ---------------------------------------------------------------------
+\subsection{Limitations and what would constitute validation}
+\label{appO:limitations}
+
+Appendix~O defines a contractible interface, not a universal truth about ``entropy'' in AI systems. Validation requires:
+(i) representative benign and adversarial suites, (ii) quantified FP/FN behavior, (iii) demonstration that veto triggers
+occur early enough to preserve thermal headroom, and (iv) economic analysis showing the quality factor improves
+Tokens/J (or equivalent) without creating strategic incentives to game counters.
+
+\paragraph{Summary.}
+Appendix~O operationalizes the idea that \emph{not all compute is equal} in a thermal-hydraulic envelope: it introduces a
+quality-sensitive, auditable cutout and (optionally) a quality-weighted settlement rule that preserves thermal margin for
+high-integrity stiff tranches.
 
 \end{document}
